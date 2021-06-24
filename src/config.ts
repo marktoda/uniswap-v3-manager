@@ -4,6 +4,7 @@ export interface Config {
   // price width of position in percentage terms
   priceWidthPercentage: number;
   bufferEther: number; // buffer of ETH to leave on wallet for fees etc.
+  historyFile: string;
   pair: {
     token0: string;
     token1: string;
@@ -20,8 +21,9 @@ export function getConfig(): Config {
   return {
     rpcUrl: envOrThrow("RPC_URL"),
     privateKey: envOrThrow("PRIVATE_KEY"),
-    priceWidthPercentage: parseInt(envOrDefault("PRICE_WIDTH", "2")),
+    priceWidthPercentage: parseInt(envOrDefault("PRICE_WIDTH", "3")),
     bufferEther: parseInt(envOrDefault("BUFFER_ETHER", "2")),
+    historyFile: envOrDefault("HISTORY_FILE", "./history.json"),
     pair: getPair(
       envOrDefault(
         "UNISWAP_PAIR",

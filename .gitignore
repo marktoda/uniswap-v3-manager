@@ -1,2 +1,5 @@
 .env
 node_modules/
+output
+history.json
+build
