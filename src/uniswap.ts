@@ -14,6 +14,12 @@ export interface PositionData {
   tickUpper: number;
 }
 
+/**
+ * Fetch data about a pool and return a representation of the pool
+ * @param pair The pair description
+ * @param provider An Ethers provider object for fetching data from the blockchain
+ * @return pool The in-memory representation of the pool
+ */
 export async function getPool(pair: Config["pair"], provider: providers.Provider): Promise<Pool> {
   const chainId = (await provider.getNetwork()).chainId;
   const token0Contract = ERC20__factory.connect(pair.token0, provider);
@@ -30,6 +36,9 @@ export async function getPool(pair: Config["pair"], provider: providers.Provider
   return new Pool(token0, token1, pair.fee, slot0.sqrtPriceX96.toString(), liquidity.toString(), slot0.tick);
 }
 
+/**
+ * Class to fetch positions from uniswap contracts
+ */
 export class UniswapPositionFetcher {
   public positions: Positions;
 
@@ -39,6 +48,25 @@ export class UniswapPositionFetcher {
     this.positions = Positions__factory.connect(config.uniswap.positions, provider);
   }
 
+  /**
+   * Fetch data about the given position NFT tokenId
+   */
+  async getPosition(tokenId: BigNumber): Promise<PositionData> {
+    const position = await this.positions.positions(tokenId);
+
+    return {
+      id: tokenId,
+      token0: position.token0,
+      token1: position.token1,
+      liquidity: position.liquidity,
+      tickLower: position.tickLower,
+      tickUpper: position.tickUpper,
+    };
+  }
+
+  /**
+   * Fetch all positions for the given accounts
+   */
   async getPositions(address: string): Promise<PositionData[]> {
     const result: PositionData[] = [];
 
@@ -47,16 +75,8 @@ export class UniswapPositionFetcher {
     while (exists) {
       try {
         const token = await this.positions.tokenOfOwnerByIndex(address, i);
-        const position = await this.positions.positions(token);
+        result.push(await this.getPosition(token));
 
-        result.push({
-          id: token,
-          token0: position.token0,
-          token1: position.token1,
-          liquidity: position.liquidity,
-          tickLower: position.tickLower,
-          tickUpper: position.tickUpper,
-        });
         i++;
       } catch (e) {
         exists = false;
@@ -66,6 +86,10 @@ export class UniswapPositionFetcher {
     return result;
   }
 
+  /**
+   * Fetch all active positions for the given accounts
+   * Active here is defined as having some liquidity and being in a pool that is relevant to the configured tokens
+   */
   async getActivePositions(address: string): Promise<ActivePosition[]> {
     return (await this.getPositions(address))
       .filter((p: PositionData) => p.liquidity.gt(0))

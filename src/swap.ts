@@ -4,10 +4,7 @@ import { SwapRouter, MethodParameters, Pool, Route, Trade } from "@uniswap/v3-sd
 import { Ether, Percent, CurrencyAmount, TradeType } from "@uniswap/sdk-core";
 import { ERC20__factory, Router, Router__factory, Quoter__factory, Quoter } from "./typechain";
 import { getFastGasPrice } from "./utils";
-
-const WETH_ADDRESS = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
-const QUOTER_ADDRESS = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6";
-const ROUTER_ADDRESS = "0xe592427a0aece92de3edee1f18e0157c05861564";
+import { WETH_ADDRESS, QUOTER_ADDRESS, ROUTER_ADDRESS } from "./constants";
 
 export class SwapManager {
   private buffer: BigNumber;
@@ -40,10 +37,6 @@ export class SwapManager {
     const totalValue0 = balance0.add(price1.quote(balance1));
     const halfValue0 = totalValue0.divide(2);
 
-    console.log(`Balance 0: ${balance0.toFixed()}`);
-    console.log(`Balance 1: ${balance1.toFixed()}`);
-    console.log(`Total Value in 0: ${totalValue0.toFixed()}`);
-    console.log(`Total Value in 1: ${this.pool.token0Price.quote(totalValue0).toFixed()}`);
     const token0 =
       this.pool.token0.address.toLowerCase() === WETH_ADDRESS.toLowerCase()
         ? Ether.onChain((await this.provider.getNetwork()).chainId)

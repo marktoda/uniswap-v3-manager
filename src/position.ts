@@ -4,29 +4,43 @@ import { ethers, BigNumber, Wallet } from "ethers";
 import { PositionData } from "./uniswap";
 import { getFastGasPrice } from "./utils";
 import { Positions__factory } from "./typechain";
+import { WETH_ADDRESS, POSITIONS_ADDRESS, MAX_UINT128 } from "./constants";
 
-const WETH_ADDRESS = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
-const POSITIONS_ADDRESS = "0xc36442b4a4522e871399cd717abdd847ab11fe88";
-const MAX_UINT128 = BigNumber.from(2).pow(128).sub(1);
-
+/**
+ * Data class describing a uniswap position.
+ * Small helper functions added from the base implementation
+ */
 export class UniPosition extends Position {
+  /**
+   * Checks if the position is in range
+   * @return inRange true if the current price is within the bounds of the position, else false
+   */
   inRange(): boolean {
     const lower = this.token0PriceLower;
     const upper = this.token0PriceUpper;
     return this.pool.token0Price.greaterThan(lower) && this.pool.token0Price.lessThan(upper);
   }
 
+  /**
+   * Gets the derived total value of the position in terms of token0
+   */
   get totalValue0(): CurrencyAmount<Token> {
     const price = this.pool.token1Price;
     return this.amount0.add(price.quote(this.amount1));
   }
 
+  /**
+   * Gets the derived total value of the position in terms of token1
+   */
   get totalValue1(): CurrencyAmount<Token> {
     const price = this.pool.token0Price;
     return this.amount1.add(price.quote(this.amount0));
   }
 }
 
+/**
+ * Class describing an active uniswap position
+ */
 export class ActivePosition extends UniPosition {
   public id: BigNumber;
 
@@ -41,6 +55,9 @@ export class ActivePosition extends UniPosition {
     this.id = data.id;
   }
 
+  /**
+   * Collects fees and liquidity from the position for the given wallet
+   */
   async burn(wallet: Wallet): Promise<void> {
     const positions = Positions__factory.connect(POSITIONS_ADDRESS, wallet.provider);
     const [fee0, fee1] = await positions.callStatic.collect(
@@ -86,6 +103,9 @@ export class ActivePosition extends UniPosition {
   }
 }
 
+/**
+ * Class describing a new, unopened position
+ */
 export class NewPosition extends UniPosition {
   static fromPosition(position: Position): NewPosition {
     return new NewPosition({
@@ -96,6 +116,12 @@ export class NewPosition extends UniPosition {
     });
   }
 
+  /**
+   * Crafts a new position class from a price range
+   * @param pool The pool to create a position on
+   * @param rangePercentage the price difference above and below the current price at which we should set the tick bounds
+   * @param amount0 The amount of liquidity in terms of token0 to add to the pool
+   */
   static withRange(pool: Pool, rangePercentage: number, amount0: string): NewPosition {
     const newPriceRange = calculatePriceRange(pool.token0Price, rangePercentage);
 
@@ -115,6 +141,9 @@ export class NewPosition extends UniPosition {
     );
   }
 
+  /**
+   * Mint a new position on-chain for this position
+   */
   async mint(wallet: Wallet): Promise<void> {
     const params = NonfungiblePositionManager.addCallParameters(this, {
       slippageTolerance: new Percent(5, 100),
