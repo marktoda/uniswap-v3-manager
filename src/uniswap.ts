@@ -24,8 +24,20 @@ export async function getPool(pair: Config["pair"], provider: providers.Provider
   const chainId = (await provider.getNetwork()).chainId;
   const token0Contract = ERC20__factory.connect(pair.token0, provider);
   const token1Contract = ERC20__factory.connect(pair.token1, provider);
-  const token0 = new Token(chainId, pair.token0, parseInt((await token0Contract.decimals()).toString()));
-  const token1 = new Token(chainId, pair.token1, parseInt((await token1Contract.decimals()).toString()));
+  const token0 = new Token(
+    chainId,
+    pair.token0,
+    parseInt((await token0Contract.decimals()).toString()),
+    await token0Contract.symbol(),
+    await token0Contract.name(),
+  );
+  const token1 = new Token(
+    chainId,
+    pair.token1,
+    parseInt((await token1Contract.decimals()).toString()),
+    await token1Contract.symbol(),
+    await token1Contract.name(),
+  );
 
   const poolAddress = Pool.getAddress(token0, token1, pair.fee);
   const poolContract = Pool__factory.connect(poolAddress, provider);

@@ -1,5 +1,6 @@
 import { ethers, Wallet, BigNumber } from "ethers";
 import { Pool } from "@uniswap/v3-sdk";
+import { CurrencyAmount } from "@uniswap/sdk-core";
 import { getPool, UniswapPositionFetcher } from "./uniswap";
 import { Config, getConfig } from "./config";
 import { NewPosition, UniPosition } from "./position";
@@ -19,10 +20,10 @@ function explainPosition(position: UniPosition) {
   );
   console.log(`Current Price`, position.pool.token1Price.toFixed(10));
   console.log(`In Range: ${position.inRange()}`);
-  console.log(`Position total value 0: ${position.totalValue0.toFixed()}`);
-  console.log(`Position total value 1: ${position.totalValue1.toFixed()}`);
-  console.log(`Position liquidity 0`, position.amount0.toFixed());
-  console.log(`Position liquidity 1`, position.amount1.toFixed());
+  console.log(`Position total value ${position.pool.token0.symbol}: ${position.totalValue0.toFixed()}`);
+  console.log(`Position total value ${position.pool.token1.symbol}: ${position.totalValue1.toFixed()}`);
+  console.log(`Position liquidity ${position.pool.token0.symbol}`, position.amount0.toFixed());
+  console.log(`Position liquidity ${position.pool.token1.symbol}`, position.amount1.toFixed());
   console.log("****************************");
   console.log();
 }
@@ -71,8 +72,17 @@ const assertApproved = async (config: Config, wallet: Wallet) => {
  */
 const getWalletTotalValue = async (wallet: Wallet, position: UniPosition): Promise<BigNumber> => {
   const balance = await wallet.provider.getBalance(await wallet.getAddress());
-  const positionEthValue = position.pool.token0.address === WETH_ADDRESS ? position.totalValue0 : position.totalValue1;
-  return BigNumber.from(positionEthValue.quotient.toString(10)).add(balance);
+  const token0IsWeth = position.pool.token0.address === WETH_ADDRESS;
+  const positionEthValue = token0IsWeth ? position.totalValue0 : position.totalValue1;
+  const token = token0IsWeth
+    ? ERC20__factory.connect(position.pool.token1.address, wallet.provider)
+    : ERC20__factory.connect(position.pool.token0.address, wallet.provider);
+  const tokenValue = await token.balanceOf(await wallet.getAddress());
+  const tokenValueInEth = token0IsWeth
+    ? position.pool.token1Price.quote(CurrencyAmount.fromRawAmount(position.pool.token1, tokenValue.toString()))
+    : position.pool.token0Price.quote(CurrencyAmount.fromRawAmount(position.pool.token0, tokenValue.toString()));
+
+  return BigNumber.from(positionEthValue.quotient.toString(10)).add(balance).add(tokenValueInEth.quotient.toString(10));
 };
 
 /**
