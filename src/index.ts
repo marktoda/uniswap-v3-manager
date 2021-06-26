@@ -3,7 +3,7 @@ import { Pool } from "@uniswap/v3-sdk";
 import { CurrencyAmount } from "@uniswap/sdk-core";
 import { getPool, UniswapPositionFetcher } from "./uniswap";
 import { Config, getConfig } from "./config";
-import { NewPosition, UniPosition } from "./position";
+import { ActivePosition, NewPosition, UniPosition } from "./position";
 import { SwapManager } from "./swap";
 import { getFastGasPrice, sleep } from "./utils";
 import { FilePositionStore } from "./store";
@@ -99,20 +99,21 @@ const createNewPosition = async (
   swapManager: SwapManager,
   pool: Pool,
   wallet: Wallet,
-): Promise<UniPosition> => {
+): Promise<ActivePosition> => {
   await swapManager.split(wallet);
   const token0Position = await swapManager.getBalance(await wallet.getAddress(), pool.token0.address);
   const newPosition = NewPosition.withRange(pool, config.priceWidthPercentage, token0Position.toString());
-  await newPosition.mint(wallet);
-  return newPosition;
+  console.log(`Minting new position`);
+  const id = await newPosition.mint(wallet);
+  return ActivePosition.fromPosition(newPosition, id);
 };
 
 /**
- * Runs the main loop
- * Checks if the user has a position, creates one if not
- * Checks if the user's position is in bounds, cashes it out and creates a new one if not
+ * Finds the user's active relevant positionId and returns it
+ * If no position is active, creates a new one
+ * @return the tokenId of the active position
  */
-async function runLoop(config: Config, wallet: Wallet) {
+async function getActivePositionId(config: Config, wallet: Wallet): Promise<BigNumber> {
   const address = await wallet.getAddress();
   console.log(`Address: ${address}`);
 
@@ -127,25 +128,47 @@ async function runLoop(config: Config, wallet: Wallet) {
     throw new Error("I can only handle one position :)");
   } else if (positions.length === 0) {
     console.log("No positions, creating new one");
-    await createNewPosition(config, swapManager, pool, wallet);
+    const newPosition = await createNewPosition(config, swapManager, pool, wallet);
+    explainPosition(newPosition);
+    return newPosition.id;
   } else {
     const position = positions[0];
     explainPosition(position);
-    const totalWalletValue = await getWalletTotalValue(wallet, position);
-    console.log(`Total wallet value: ${ethers.utils.formatEther(totalWalletValue)}`);
+    return position.id;
+  }
+}
 
-    if (position.inRange()) {
-      console.log("position still in range - all good");
-    } else {
-      console.log("position out of range - burning old position and creating a new one");
-      await position.burn(wallet);
-      const newPosition = await createNewPosition(config, swapManager, pool, wallet);
-      explainPosition(newPosition);
+/**
+ * Runs the main loop
+ * Checks if the user's position is in bounds, cashes it out and creates a new one if not
+ * @return the tokenId of the new active position
+ */
+async function runLoop(config: Config, wallet: Wallet, positionId: BigNumber): Promise<BigNumber> {
+  const address = await wallet.getAddress();
+  console.log(`Address: ${address}`);
 
-      new FilePositionStore(config.historyFile).storeHistory(
-        FilePositionStore.createItem(totalWalletValue, newPosition),
-      );
-    }
+  const pool = await getPool(config.pair, wallet.provider);
+  const uniswap = new UniswapPositionFetcher(config, pool);
+  const position = new ActivePosition(pool, await uniswap.getPosition(positionId));
+  const swapManager = new SwapManager(config, pool);
+
+  await assertApproved(config, wallet);
+
+  explainPosition(position);
+  const totalWalletValue = await getWalletTotalValue(wallet, position);
+  console.log(`Total wallet value: ${ethers.utils.formatEther(totalWalletValue)}`);
+
+  if (position.inRange()) {
+    console.log("position still in range - all good");
+    return position.id;
+  } else {
+    console.log("position out of range - burning old position and creating a new one");
+    await position.burn(wallet);
+    const newPosition = await createNewPosition(config, swapManager, pool, wallet);
+    explainPosition(newPosition);
+
+    new FilePositionStore(config.historyFile).storeHistory(FilePositionStore.createItem(totalWalletValue, newPosition));
+    return newPosition.id;
   }
 }
 
@@ -155,9 +178,11 @@ async function main() {
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
   const wallet = new Wallet(config.privateKey, provider);
 
+  let positionId = await getActivePositionId(config, wallet);
+
   for (;;) {
     try {
-      await runLoop(config, wallet);
+      positionId = await runLoop(config, wallet, positionId);
     } catch (e) {
       console.log(e);
     }

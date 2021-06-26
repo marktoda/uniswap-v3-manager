@@ -55,6 +55,17 @@ export class ActivePosition extends UniPosition {
     this.id = data.id;
   }
 
+  static fromPosition(position: UniPosition, id: BigNumber): ActivePosition {
+    return new ActivePosition(position.pool, {
+      id,
+      token0: position.pool.token0.address,
+      token1: position.pool.token1.address,
+      liquidity: BigNumber.from(position.liquidity.toString()),
+      tickLower: position.tickLower,
+      tickUpper: position.tickUpper,
+    });
+  }
+
   /**
    * Collects fees and liquidity from the position for the given wallet
    */
@@ -144,7 +155,7 @@ export class NewPosition extends UniPosition {
   /**
    * Mint a new position on-chain for this position
    */
-  async mint(wallet: Wallet): Promise<void> {
+  async mint(wallet: Wallet): Promise<BigNumber> {
     const params = NonfungiblePositionManager.addCallParameters(this, {
       slippageTolerance: new Percent(5, 100),
       deadline: ethers.constants.MaxUint256.toString(),
@@ -161,7 +172,20 @@ export class NewPosition extends UniPosition {
       gasPrice: await getFastGasPrice(),
       gasLimit: 600000,
     });
-    await tx.wait();
+    const receipt = await tx.wait();
+    const IncreaseLiquidityLog = new ethers.utils.Interface([
+      "event IncreaseLiquidity(uint256 indexed tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)",
+    ]);
+
+    for (const log of receipt.logs) {
+      try {
+        const parsed = IncreaseLiquidityLog.parseLog(log);
+        return parsed.args.tokenId;
+        // eslint-disable-next-line no-empty
+      } catch (e) {}
+    }
+
+    throw new Error("Unable to fetch tokenId");
   }
 }
 
