@@ -102,8 +102,9 @@ export class SwapManager {
       data: params.calldata,
       value: params.value,
       gasPrice: await getFastGasPrice(),
+      gasLimit: 300000,
     });
-    await tx.wait();
+    await tx.wait(3);
   }
 
   async getBalance(address: string, token: string): Promise<BigNumber> {
