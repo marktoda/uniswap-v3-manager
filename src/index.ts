@@ -115,7 +115,6 @@ const createNewPosition = async (
  */
 async function getActivePositionId(config: Config, wallet: Wallet): Promise<BigNumber> {
   const address = await wallet.getAddress();
-  console.log(`Address: ${address}`);
 
   const pool = await getPool(config.pair, wallet.provider);
   const uniswap = new UniswapPositionFetcher(config, pool);
@@ -129,11 +128,9 @@ async function getActivePositionId(config: Config, wallet: Wallet): Promise<BigN
   } else if (positions.length === 0) {
     console.log("No positions, creating new one");
     const newPosition = await createNewPosition(config, swapManager, pool, wallet);
-    explainPosition(newPosition);
     return newPosition.id;
   } else {
     const position = positions[0];
-    explainPosition(position);
     return position.id;
   }
 }
