@@ -81,6 +81,8 @@ export class ActivePosition extends UniPosition {
       { from: await wallet.getAddress() }, // need to simulate the call as the owner
     );
 
+    console.log(`Fees earned - Token 1: ${fee0}, Token 2: ${fee1}`);
+
     const token0 =
       this.pool.token0.address.toLowerCase() === WETH_ADDRESS.toLowerCase()
         ? Ether.onChain((await wallet.provider.getNetwork()).chainId)

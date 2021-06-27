@@ -1,8 +1,7 @@
 import * as fs from "fs";
-import { CurrencyAmount } from "@uniswap/sdk-core";
 import { BigNumber } from "ethers";
 import { UniPosition } from "./position";
-import { WETH_ADDRESS } from "./constants";
+import { ethToTokenValue } from './utils';
 
 export interface PositionHistory {
   totalWalletValueEth: string;
@@ -29,18 +28,9 @@ export class FilePositionStore implements PositionHistoryStore {
   }
 
   static createItem(totalWalletValue: BigNumber, position: UniPosition): PositionHistory {
-    const totalWalletValueToken =
-      position.pool.token0.address === WETH_ADDRESS
-        ? position.pool.token0Price.quote(
-            CurrencyAmount.fromRawAmount(position.pool.token0, totalWalletValue.toString()),
-          )
-        : position.pool.token1Price.quote(
-            CurrencyAmount.fromRawAmount(position.pool.token1, totalWalletValue.toString()),
-          );
-
     return {
       totalWalletValueEth: totalWalletValue.toString(),
-      totalWalletValueToken: totalWalletValueToken.quotient.toString(10),
+      totalWalletValueToken: ethToTokenValue(totalWalletValue, position.pool).toString(),
       lowerPrice: position.token0PriceLower.toFixed(10),
       upperPrice: position.token0PriceUpper.toFixed(10),
       timestamp: Date.now(),
