@@ -5,7 +5,7 @@ import { getPool, UniswapPositionFetcher } from "./uniswap";
 import { Config, getConfig } from "./config";
 import { ActivePosition, NewPosition, UniPosition } from "./position";
 import { SwapManager } from "./swap";
-import { getFastGasPrice, sleep } from "./utils";
+import { ethToTokenValue, getFastGasPrice, sleep } from "./utils";
 import { FilePositionStore } from "./store";
 import { ERC20__factory } from "./typechain";
 import { WETH_ADDRESS } from "./constants";
@@ -153,7 +153,7 @@ async function runLoop(config: Config, wallet: Wallet, positionId: BigNumber): P
 
   explainPosition(position);
   const totalWalletValue = await getWalletTotalValue(wallet, position);
-  console.log(`Total wallet value: ${ethers.utils.formatEther(totalWalletValue)}`);
+  console.log(`Total wallet value: ${ethers.utils.formatEther(totalWalletValue)} ETH, ${ethToTokenValue(totalWalletValue, pool)} tokens`);
 
   if (position.inRange()) {
     console.log("position still in range - all good");
