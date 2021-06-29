@@ -16,7 +16,7 @@ import { WETH_ADDRESS } from "./constants";
 function explainPosition(position: UniPosition) {
   console.log("********* Position *********");
   console.log(
-    `range: ${position.token0PriceUpper.invert().toFixed(10)} - ${position.token0PriceLower.invert().toFixed(10)}`,
+    `Range: ${position.token0PriceUpper.invert().toFixed(10)} - ${position.token0PriceLower.invert().toFixed(10)}`,
   );
   console.log(`Current Price`, position.pool.token1Price.toFixed(10));
   console.log(`In Range: ${position.inRange()}`);
@@ -124,7 +124,7 @@ async function getActivePositionId(config: Config, wallet: Wallet): Promise<BigN
   await assertApproved(config, wallet);
 
   if (positions.length > 1) {
-    throw new Error("I can only handle one position :)");
+    throw new Error("More than one active position at once");
   } else if (positions.length === 0) {
     console.log("No positions, creating new one");
     const newPosition = await createNewPosition(config, swapManager, pool, wallet);
@@ -155,11 +155,16 @@ async function runLoop(config: Config, wallet: Wallet, positionId: BigNumber): P
   const totalWalletValue = await getWalletTotalValue(wallet, position);
   console.log(`Total wallet value: ${ethers.utils.formatEther(totalWalletValue)} ETH, ${ethToTokenValue(totalWalletValue, pool)} tokens`);
 
-  if (position.inRange()) {
-    console.log("position still in range - all good");
+  if (BigNumber.from(position.liquidity.toString(10)).eq(0)) {
+    console.log("Position inactive, creating new one");
+    const newPosition = await createNewPosition(config, swapManager, pool, wallet);
+    explainPosition(newPosition);
+    return newPosition.id;
+  } else if (position.inRange()) {
+    console.log("Position still in range");
     return position.id;
   } else {
-    console.log("position out of range - burning old position and creating a new one");
+    console.log("Position out of range - burning old position and creating a new one");
     await position.burn(wallet);
     const newPosition = await createNewPosition(config, swapManager, pool, wallet);
     explainPosition(newPosition);
@@ -170,11 +175,12 @@ async function runLoop(config: Config, wallet: Wallet, positionId: BigNumber): P
 }
 
 async function main() {
-  const config = getConfig();
+  const config = await getConfig();
 
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
   const wallet = new Wallet(config.privateKey, provider);
 
+  console.log(`Searching for open positions on address: ${await wallet.getAddress()}`);
   let positionId = await getActivePositionId(config, wallet);
 
   for (;;) {

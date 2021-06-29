@@ -16,7 +16,21 @@ $ yarn install
 
 ## Configuration
 
-The application is configured through environment variables. It is advised to use a `.env` file to keep these in one place.
+The application is configured through CLI parameters:
+```
+Options:
+  -r, --rpc <url>           RPC URL to fetch data from the blockchain (default: "https://mainnet.infura.io/v3/<PROJECT_ID>")
+  -w, --width <percent>     Price width of LP positions in percentage terms (default: "2")
+  -b, --buffer <eth>        Ether buffer to keep on wallet for fees (default: "2")
+  -o, --outFile <fileName>  File to write position history in (default: "./history.json")
+  -k, --key <key>           Private key hex string (default: "")
+  -kf, --keyFile <file>     Private key file (default: "")
+  -e, --encrypted           Whether or not the private key file is encrypted (default: false)
+  -es, --scheme <scheme>    Encryption scheme for the encrypted private key file (choices: "gpg", default: "gpg")
+  -h, --help                display help for command
+```
+
+Options can also be provided through environment variables:
 
 #### Required configuration parameters
 
@@ -26,7 +40,9 @@ The URL at which the application can talk to the blockchain through JSON RPC. In
 
 `PRIVATE_KEY`
 
-Hex encoded string private key for the wallet to manage positions with. Encrypted json key file is not yet supported.
+Hex encoded string private key for the wallet to manage positions with. 
+
+Alternatively private key can be provided through an encrypted key file. GPG is the only encryption scheme supported currently.
 
 #### Optional configuration parameters
 

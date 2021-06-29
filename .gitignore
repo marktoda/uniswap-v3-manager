@@ -3,3 +3,4 @@ node_modules/
 output
 history.json
 build
+yarn-error.log
