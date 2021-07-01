@@ -1,1 +1,1 @@
-declare module 'gpg';
+declare module "gpg";

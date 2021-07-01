@@ -1,7 +1,8 @@
-import { Command, Option, program } from 'commander';
-import { promisify } from 'util';
-import { decrypt as _decrypt } from 'gpg';
-import fs from 'fs';
+import { Command, Option, program } from "commander";
+import { ethers } from "ethers";
+import { promisify } from "util";
+import { decrypt as _decrypt } from "gpg";
+import fs from "fs";
 const decrypt = promisify(_decrypt);
 
 export interface Config {
@@ -21,52 +22,65 @@ export interface Config {
     factory: string;
     router: string;
   };
+  chainId: number;
 }
 
 interface CliArgs {
-    rpc: string;
-    width: string;
-    buffer: string;
-    outFile: string;
-    key?: string;
-    keyFile?: string;
-    encrypted?: boolean;
-    scheme?: string;
+  rpc: string;
+  width: string;
+  buffer: string;
+  outFile: string;
+  key?: string;
+  keyFile?: string;
+  encrypted?: boolean;
+  scheme?: string;
 }
 
 function getProgramArgs(): Command {
-    return program
-        .requiredOption('-r, --rpc <url>', 'RPC URL to fetch data from the blockchain', envOrThrow("RPC_URL"))
-        .requiredOption('-w, --width <percent>', 'Price width of LP positions in percentage terms', envOrDefault("PRICE_WIDTH", "3"))
-        .requiredOption('-b, --buffer <eth>', 'Ether buffer to keep on wallet for fees', envOrDefault("BUFFER_ETHER", "2"))
-        .requiredOption('-o, --outFile <fileName>', 'File to write position history in', envOrDefault("HISTORY_FILE", "./history.json"))
-        .option('-k, --key <key>', 'Private key hex string', envOrDefault("PRIVATE_KEY", ""))
-        .option('-kf, --keyFile <file>', 'Private key file', envOrDefault("PRIVATE_KEY_FILE", ""))
-        .option('-e, --encrypted', 'Whether or not the private key file is encrypted', false)
-        .addOption(new Option('-es, --scheme <scheme>', 'Encryption scheme for the encrypted private key file').choices(['gpg']).default('gpg'));
+  return program
+    .requiredOption("-r, --rpc <url>", "RPC URL to fetch data from the blockchain", envOrThrow("RPC_URL"))
+    .requiredOption(
+      "-w, --width <percent>",
+      "Price width of LP positions in percentage terms",
+      envOrDefault("PRICE_WIDTH", "3"),
+    )
+    .requiredOption("-b, --buffer <eth>", "Ether buffer to keep on wallet for fees", envOrDefault("BUFFER_ETHER", "2"))
+    .requiredOption(
+      "-o, --outFile <fileName>",
+      "File to write position history in",
+      envOrDefault("HISTORY_FILE", "./history.json"),
+    )
+    .option("-k, --key <key>", "Private key hex string", envOrDefault("PRIVATE_KEY", ""))
+    .option("-kf, --keyFile <file>", "Private key file", envOrDefault("PRIVATE_KEY_FILE", ""))
+    .option("-e, --encrypted", "Whether or not the private key file is encrypted", false)
+    .addOption(
+      new Option("-es, --scheme <scheme>", "Encryption scheme for the encrypted private key file")
+        .choices(["gpg"])
+        .default("gpg"),
+    );
 }
 
 async function parsePrivateKey(args: CliArgs): Promise<string> {
-    if (args.key) {
-        return args.key;
-    } else if (args.keyFile && !args.encrypted) {
-        return fs.readFileSync(args.keyFile, 'utf-8').trim();
-    } else if (args.keyFile && args.encrypted) {
-        switch (args.scheme) {
-            case 'gpg':
-                console.log('Decrypting gpg encrypted private key file');
-                const data = (await decrypt(fs.readFileSync(args.keyFile))).toString('utf-8');
-                return data.split('\n')[0].trim();
-            default:
-                throw new Error(`Unsupported encryption scheme: ${args.scheme}`);
-        }
-    } else {
-        throw new Error('Could not parse private key');
+  if (args.key) {
+    return args.key;
+  } else if (args.keyFile && !args.encrypted) {
+    return fs.readFileSync(args.keyFile, "utf-8").trim();
+  } else if (args.keyFile && args.encrypted) {
+    switch (args.scheme) {
+      case "gpg":
+        console.log("Decrypting gpg encrypted private key file");
+        return (await decrypt(fs.readFileSync(args.keyFile))).toString("utf-8").split("\n")[0].trim();
+      default:
+        throw new Error(`Unsupported encryption scheme: ${args.scheme}`);
     }
+  } else {
+    throw new Error("Could not parse private key");
+  }
 }
 
 export async function getConfig(): Promise<Config> {
   const args: CliArgs = getProgramArgs().parse().opts();
+  const provider = new ethers.providers.JsonRpcProvider(args.rpc);
 
   return {
     rpcUrl: args.rpc,
@@ -74,6 +88,7 @@ export async function getConfig(): Promise<Config> {
     priceWidthPercentage: parseInt(args.width),
     bufferEther: parseInt(args.buffer),
     historyFile: args.outFile,
+    chainId: (await provider.getNetwork()).chainId,
     pair: getPair(
       envOrDefault(
         "UNISWAP_PAIR",

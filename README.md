@@ -17,6 +17,7 @@ $ yarn install
 ## Configuration
 
 The application is configured through CLI parameters:
+
 ```
 Options:
   -r, --rpc <url>           RPC URL to fetch data from the blockchain (default: "https://mainnet.infura.io/v3/<PROJECT_ID>")
@@ -40,7 +41,7 @@ The URL at which the application can talk to the blockchain through JSON RPC. In
 
 `PRIVATE_KEY`
 
-Hex encoded string private key for the wallet to manage positions with. 
+Hex encoded string private key for the wallet to manage positions with.
 
 Alternatively private key can be provided through an encrypted key file. GPG is the only encryption scheme supported currently.
 
