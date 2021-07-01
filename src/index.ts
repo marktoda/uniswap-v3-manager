@@ -15,6 +15,7 @@ import { WETH_ADDRESS } from "./constants";
  */
 function explainPosition(position: UniPosition) {
   console.log("********* Position *********");
+  console.log(`Current time: ${new Date().toISOString()}`);
   console.log(
     `Range: ${position.token0PriceUpper.invert().toFixed(10)} - ${position.token0PriceLower.invert().toFixed(10)}`,
   );
@@ -102,7 +103,11 @@ const createNewPosition = async (
 ): Promise<ActivePosition> => {
   await swapManager.split(wallet);
   const token0Position = await swapManager.getBalance(await wallet.getAddress(), pool.token0.address);
-  const newPosition = NewPosition.withRange(pool, config.priceWidthPercentage, token0Position.toString());
+  const newPosition = NewPosition.withRange(
+    await getPool(config.pair, wallet.provider),
+    config.priceWidthPercentage,
+    token0Position.toString(),
+  );
   console.log(`Minting new position`);
   const id = await newPosition.mint(wallet);
   return ActivePosition.fromPosition(newPosition, id);
@@ -153,7 +158,12 @@ async function runLoop(config: Config, wallet: Wallet, positionId: BigNumber): P
 
   explainPosition(position);
   const totalWalletValue = await getWalletTotalValue(wallet, position);
-  console.log(`Total wallet value: ${ethers.utils.formatEther(totalWalletValue)} ETH, ${ethToTokenValue(totalWalletValue, pool)} tokens`);
+  console.log(
+    `Total wallet value: ${ethers.utils.formatEther(totalWalletValue)} ETH, ${ethToTokenValue(
+      totalWalletValue,
+      pool,
+    )} tokens`,
+  );
 
   if (BigNumber.from(position.liquidity.toString(10)).eq(0)) {
     console.log("Position inactive, creating new one");

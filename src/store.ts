@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import { BigNumber } from "ethers";
 import { UniPosition } from "./position";
-import { ethToTokenValue } from './utils';
+import { ethToTokenValue } from "./utils";
 
 export interface PositionHistory {
   totalWalletValueEth: string;

@@ -97,6 +97,7 @@ export class ActivePosition extends UniPosition {
       liquidityPercentage: new Percent(100, 100),
       slippageTolerance: new Percent(5, 100),
       deadline: ethers.constants.MaxUint256.toString(),
+      burnToken: true,
       collectOptions: {
         expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(token0, fee0.toString()),
         expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(token1, fee1.toString()),

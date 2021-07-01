@@ -17,14 +17,10 @@ export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-
 export function ethToTokenValue(value: BigNumber, pool: Pool): BigNumber {
-    return BigNumber.from(pool.token0.address === WETH_ADDRESS
-        ? pool.token0Price.quote(
-            CurrencyAmount.fromRawAmount(pool.token0, value.toString()),
-        )
-        : pool.token1Price.quote(
-            CurrencyAmount.fromRawAmount(pool.token1, value.toString()),
-        ).quotient.toString(10));
-
+  return BigNumber.from(
+    pool.token0.address === WETH_ADDRESS
+      ? pool.token0Price.quote(CurrencyAmount.fromRawAmount(pool.token0, value.toString()))
+      : pool.token1Price.quote(CurrencyAmount.fromRawAmount(pool.token1, value.toString())).quotient.toString(10),
+  );
 }
