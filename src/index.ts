@@ -191,11 +191,11 @@ async function main() {
   const wallet = new Wallet(config.privateKey, provider);
 
   console.log(`Searching for open positions on address: ${await wallet.getAddress()}`);
-  let positionId = await getActivePositionId(config, wallet);
 
   for (;;) {
     try {
-      positionId = await runLoop(config, wallet, positionId);
+      const positionId = await getActivePositionId(config, wallet);
+      await runLoop(config, wallet, positionId);
     } catch (e) {
       console.log(e);
     }
