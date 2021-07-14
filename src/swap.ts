@@ -112,7 +112,7 @@ export class SwapManager {
     });
 
     const params = SwapRouter.swapCallParameters([trade], {
-      slippageTolerance: new Percent(5, 100),
+      slippageTolerance: new Percent(2, 1000),
       recipient: address,
       deadline: ethers.constants.MaxUint256.toString(),
     });
